@@ -1,0 +1,2 @@
+class InvalidTaskTitle(Exception):
+    pass

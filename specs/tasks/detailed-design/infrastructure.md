@@ -4,11 +4,13 @@
 
 ## 1. 適用する共通構成
 
-[Docker Compose](../../../steering/api/docker-compose.md)、[バージョン・依存管理](../../../steering/api/versions-and-dependencies.md)、[データ保存](../../../steering/api/data-storage.md)、[設定・秘密情報](../../../steering/api/settings-and-secrets.md)に従う。APIとPostgreSQLを起動し、Flywayを先に適用する。DBは永続ボリュームを使う。
+[Docker Compose](../../../steering/api/docker-compose.md)、[バージョン・依存管理](../../../steering/api/versions-and-dependencies.md)、[データ保存](../../../steering/api/data-storage.md)、[設定・秘密情報](../../../steering/api/settings-and-secrets.md)に従う。APIとPostgreSQLを起動し、Flywayを先に適用する。DBは永続ボリュームを使う。 実装は [compose.yaml](../../../compose.yaml)・[Dockerfile](../../../apps/backend/Dockerfile) を参照する。
+
+初回実装では、[PostgreSQL公式](https://www.postgresql.org/download/)で確認した安定版18.7と、[Flyway公式リリースノート](https://documentation.red-gate.com/fd/release-notes-for-flyway-engine-179732572.html)の13.12.2を固定した（確認日：2026-11-16）。Python・FastAPI・uvは共通方針の固定版を維持し、依存解決とDockerでの結合テストにより組み合わせを確認する。
 
 ## 2. 領域固有の依存・設定
 
-追加の外部サービス・環境変数はなし。DB接続などは共通設定を利用する。マイグレーションは `apps/backend/db/migrations/` でバックエンド全体の連番として管理する。tasksのテーブルはこの領域が所有する。
+追加の外部サービス・環境変数はなし。DB接続などは共通設定を利用する。項目名は [.env.example](../../../.env.example)、読み込み・検証は [settings.py](../../../apps/backend/app/shared/infrastructure/settings.py) を参照する。マイグレーションは `apps/backend/db/migrations/` でバックエンド全体の連番として管理する。tasksのテーブルはこの領域が所有する。
 
 ## 3. 環境による違い
 
@@ -21,4 +23,4 @@
 
 ## 4. 未決定事項
 
-[要求仕様](../requirements.md)のTASK-Q-001〜003への2026-11-16に承認済み。ツールの導入・互換性確認と具体的な依存の固定は実装時に行う。環境構築済みを意味しない。
+[要求仕様](../requirements.md)のTASK-Q-001〜003は2026-11-16にユーザー承認済み。依存の具体的な固定は `apps/backend/pyproject.toml`・`uv.lock`、イメージの固定はルートの `compose.yaml`・バックエンドの `Dockerfile` を参照する。

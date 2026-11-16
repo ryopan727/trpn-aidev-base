@@ -1,0 +1,112 @@
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  api:
+    build:
+      context: ./apps/backend
+      target: runtime
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:?Set DB_NAME in .env}
+      DB_USER: ${DB_USER:?Set DB_USER in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    volumes:
+      - ./apps/backend/app:/app/app
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, /app/.venv/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/tasks')"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  db:
+    image: postgres:18.7
+    environment:
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME in .env}
+      POSTGRES_USER: ${DB_USER:?Set DB_USER in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    logging: *logging
+
+  flyway:
+    image: redgate/flyway:13.12.2
+    profiles: [tools]
+    environment:
+      FLYWAY_URL: jdbc:postgresql://db:5432/${DB_NAME:?Set DB_NAME in .env}
+      FLYWAY_USER: ${DB_USER:?Set DB_USER in .env}
+      FLYWAY_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - ./apps/backend/db/migrations:/flyway/sql:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *logging
+
+  db-test:
+    image: postgres:18.7
+    profiles: [test]
+    environment:
+      POSTGRES_DB: ${TEST_DB_NAME:?Set TEST_DB_NAME in .env}
+      POSTGRES_USER: ${TEST_DB_USER:?Set TEST_DB_USER in .env}
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD in .env}
+    volumes:
+      - test-db-data:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    logging: *logging
+
+  flyway-test:
+    image: redgate/flyway:13.12.2
+    profiles: [test]
+    environment:
+      FLYWAY_URL: jdbc:postgresql://db-test:5432/${TEST_DB_NAME:?Set TEST_DB_NAME in .env}
+      FLYWAY_USER: ${TEST_DB_USER:?Set TEST_DB_USER in .env}
+      FLYWAY_PASSWORD: ${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD in .env}
+    volumes:
+      - ./apps/backend/db/migrations:/flyway/sql:ro
+    depends_on:
+      db-test:
+        condition: service_healthy
+    logging: *logging
+
+  test:
+    build:
+      context: ./apps/backend
+      target: test
+    profiles: [test]
+    environment:
+      DB_HOST: db-test
+      DB_PORT: "5432"
+      DB_NAME: ${TEST_DB_NAME:?Set TEST_DB_NAME in .env}
+      DB_USER: ${TEST_DB_USER:?Set TEST_DB_USER in .env}
+      DB_PASSWORD: ${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD in .env}
+      TEST_DB_NAME: ${TEST_DB_NAME:?Set TEST_DB_NAME in .env}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./apps/backend/app:/app/app
+      - ./apps/backend/tests:/app/tests
+    logging: *logging
+
+volumes:
+  db-data:
+  test-db-data:

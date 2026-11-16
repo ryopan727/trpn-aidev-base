@@ -1,0 +1,52 @@
+version: '3'
+
+tasks:
+  dev:up:
+    desc: Build API, migrate the development database and start the API
+    cmds:
+      - docker compose stop api
+      - docker compose build api
+      - docker compose up -d --wait db
+      - docker compose run --rm flyway migrate
+      - docker compose up -d --wait api
+  dev:down:
+    desc: Stop development services, keeping database volumes
+    cmds:
+      - docker compose down
+  test:prepare:
+    internal: true
+    cmds:
+      - docker compose up -d --wait db-test
+      - docker compose run --rm flyway-test migrate
+  test:unit:
+    desc: Run tests that do not use a database
+    cmds:
+      - docker compose run --rm --build --no-deps test uv run --locked pytest -m 'not db'
+  test:integration:
+    desc: Test repositories and transactions against PostgreSQL
+    cmds:
+      - task: test:prepare
+      - docker compose run --rm --build --no-deps test uv run --locked pytest -m db tests/tasks/infrastructure
+  test:e2e:
+    desc: Test HTTP requests through all layers against PostgreSQL
+    cmds:
+      - task: test:prepare
+      - docker compose run --rm --build --no-deps test uv run --locked pytest -m db tests/integration
+  lint:
+    desc: Check Python with Ruff
+    cmds:
+      - docker compose run --rm --build --no-deps test uv run --locked ruff check app tests
+  format:check:
+    desc: Check Python formatting
+    cmds:
+      - docker compose run --rm --build --no-deps test uv run --locked ruff format --check app tests
+  typecheck:
+    desc: Check application types with mypy
+    cmds:
+      - docker compose run --rm --build --no-deps test uv run --locked mypy
+  openapi:export:
+    desc: Export generated OpenAPI for review against specs/tasks/openapi.yaml
+    cmds:
+      - mkdir -p artifacts
+      - docker compose build test
+      - docker compose run --rm --no-deps -T test uv run --locked python -c 'import json; from app.main import app; print(json.dumps(app.openapi(), ensure_ascii=False, indent=2))' > artifacts/openapi.generated.json
