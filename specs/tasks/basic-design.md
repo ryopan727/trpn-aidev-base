@@ -5,6 +5,7 @@
 | サブドメイン | `tasks` |
 | 文書の状態 | 決定済み |
 | 要求仕様書 | [requirements.md](requirements.md) |
+| データモデル | [data-model.md](data-model.md) |
 | API仕様書 | [openapi.yaml](openapi.yaml) |
 | 関連する技術方針 | [API共通方針](../../steering/api/README.md) |
 
@@ -46,11 +47,7 @@ TASK-REQ-001〜004を対象とする。tasksが登録・参照・完了とデー
 
 ## 4. データの概念・関係
 
-| データ・所有領域 | 主要項目と意味 | 識別・関係 |
-| --- | --- | --- |
-| タスク・tasks | `id`：UUIDv4、`title`：作業名、`status`：状態、`created_at`：作成時点（UTC） | IDで識別。他の業務データとの関係なし。ID・作成時点はAPI側が設定する。 |
-
-タイトルの一意制約は設けない。物理構造は共通方針に沿ってFlywayのSQLで具体化する。完了日時・更新日時は今回保持しない。
+tasksがタスクの識別情報・作業名・状態・作成時点を所有する。概念ER図、論理スキーマ、項目の制約とAPIとの対応は [data-model.md](data-model.md) に定義する。
 
 ## 5. 状態・状態遷移
 
