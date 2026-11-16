@@ -54,7 +54,8 @@ apps/backend/
     │   └── infrastructure/
     ├── shared/                     # 共通処理のテスト
     ├── bootstrap/                  # 組み立て処理のテスト
-    └── integration/                # サブドメイン横断・アプリ全体の連携テスト
+    ├── integration/                # プロセス内のサブドメイン横断・連携テスト
+    └── e2e/                        # Compose上のAPIへの実HTTP通信とDBの検証
 ```
 
 Pythonのパッケージとして扱う実装ディレクトリには `__init__.py` を置きます。図では省略しています。
@@ -69,7 +70,7 @@ Pythonのパッケージとして扱う実装ディレクトリには `__init__.
 | 契約と実装 | 保存・取得の契約は `domain/repositories.py`、具体的な実装は `infrastructure/repositories.py` に置く。ユースケース固有の外部処理の契約は `application/ports.py` に置く。 |
 | 組み立て処理 | `app/bootstrap/` にサブドメインごとの組み立て処理を置く。`shared` に個別サブドメインへの依存を持たせないため。 |
 | 共通処理 | `shared` の内部も4層で分類する。共通部品の責務と、どの層から参照できるかを判断しやすくするため。 |
-| テスト | `app` の外の `tests` に置き、サブドメイン・層に対応させる。横断する連携テストは `tests/integration/` に置く。 |
+| テスト | `app` の外の `tests` に置き、サブドメイン・層に対応させる。横断する連携テストは `tests/integration/`、実HTTP通信のE2Eは `tests/e2e/` に置く。 |
 
 DTOは処理の間でデータを受け渡すための型、portは外部処理へ依頼するための契約を指します。具体的な実装方法やライブラリはここでは決めません。
 後続の決定に従い、DTOはNo.7のdataclass、契約はNo.5のProtocol、Unit of WorkはNo.9の配置を使います。設定読み込みは `shared/infrastructure/settings.py`、共通エラーハンドラーとHTTPログ処理は `shared/presentation/` に配置します。図は全ファイルを列挙するものではなく、詳細は各方針を参照してください。

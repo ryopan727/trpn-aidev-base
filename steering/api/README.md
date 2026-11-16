@@ -35,7 +35,7 @@ No.10の認証・認可は今回は対象外とし、それ以外の項目は決
 | 10 | 認証・認可 | 今回は実装しない。認証方式の選定や権限チェックの実装は対象外とする。 | 対象外 |
 | 11 | [設定・秘密情報](settings-and-secrets.md) | `.env`＋Composeの `environment`＋`os.getenv()` を採用。読み込みを共通infrastructureへ集約し、起動時に検証する。環境ごとに値を差し替え、秘密情報はGit・イメージ・ログへ含めない。 | 決定済み |
 | 12 | [Docker Compose・起動方法](docker-compose.md) | 開発用にAPI・PostgreSQL・Flywayをコンテナ化。Uvicorn、自動リロード、named volume、明示的なマイグレーションを採用。APIのみローカルに公開する。 | 決定済み |
-| 13 | [テスト](testing.md) | pytest＋TestClient、層ごとの検証、依存の差し替え、テスト専用PostgreSQLを採用。fixtureでデータを準備し、Composeで実行する。 | 決定済み |
+| 13 | [テスト](testing.md) | pytest＋TestClientによる層ごとの検証と、HTTPXによる実HTTPのE2Eを採用。テスト専用PostgreSQLを使い、E2EはCompose上のAPIからDBまで検証する。 | 決定済み |
 | 14 | [ログ](logging.md) | 標準logging、テキスト形式、標準出力、通常INFO、リクエストIDを採用。秘密情報を除外し、障害の重複記録を避ける。 | 決定済み |
 
 DBや認証など、要件に依存する項目は「当面は使わない」「必要になるまで保留」も選択できます。

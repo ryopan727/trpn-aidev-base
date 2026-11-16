@@ -11,7 +11,33 @@ Python・FastAPIでREST APIを作り、Docker Composeで開発環境を起動す
 4. AIが作成した要求・設計を確認して承認し、「自律実装モード」で実装を依頼します。
 5. 作成されたPR（変更内容をレビューするための提案）で、コード・仕様との対応・テスト結果を確認します。
 
-現在のキットには方針と設計テンプレートがあり、アプリ・Compose・Taskfileはまだ実装されていません。初回実装で必要なものを整えます。実装時にはGit・Docker Compose・Taskを実行できる環境と、作業先リポジトリへのpush・PR作成に必要なGitHubの認証・権限を用意してください。
+方針・設計テンプレートに加え、タスク管理API（登録・一覧・完了・1件取得）を実装しています。Git・Docker Compose・[Go Task](https://taskfile.dev/)を用意してください。自律実装でPRを作成する場合は、作業先リポジトリへのpush・PR作成に必要なGitHubの認証・権限も必要です。
+
+### サンプルAPIを起動する
+
+リポジトリ直下で実行します。PythonとuvはDockerイメージ内に用意されるため、ホストへの導入は不要です。
+
+```bash
+cp .env.example .env
+# .envの開発用・テスト用パスワードを、それぞれ別のローカル専用値に変更する
+task dev:up
+```
+
+起動後は [Swagger UI](http://127.0.0.1:8000/docs) で登録・一覧・完了を試せます。登録は `{"title": "最初のタスク"}`、完了は対象IDへのPATCHで `{"status": "completed"}` を指定します。
+
+```bash
+task test:unit
+task test:integration
+task test:e2e
+task lint
+task format:check
+task typecheck
+task openapi:export
+task dev:down
+```
+
+停止してもDBのデータは保持します。結合・E2Eテストは専用DBを初期化するため、同時実行しません。`task test:e2e` は専用のAPIコンテナを起動し、実HTTP通信からDB保存まで検証した後、専用APIを停止します。worktreeを併用する場合は、それぞれの `.env` で `COMPOSE_PROJECT_NAME` と `API_PORT` を分けます。`TEST_DB_NAME` は `_test` で終わる名前にします。認証・認可は対象外で、ローカルで試すAPIです。
+[タスク管理の仕様](specs/tasks/requirements.md)と[Taskの詳細](specs/tasks/detailed-design/operations.md)を参照してください。
 
 ## 2つのモードの使い方
 
@@ -69,4 +95,4 @@ AGENTS.mdと関連するsteering・specsに従って実装してください。
 `steering` に共通のルール、`specs` にサブドメインごとの仕様・設計、`apps` にコードを置きます。
 AIへの作業指示と2つの開発モードの指定方法は [AGENTS.md](AGENTS.md) にまとめています。
 まずはこの構成を土台に、必要な取り決めを一つずつ追加します。
-[AI駆動開発の進め方](steering/aidd/README.md)、[APIの技術方針](steering/api/README.md)、[仕様・設計の成果物とテンプレート](specs/README.md)を整備しています。具体的なサブドメインの仕様・実装は、必要になった時点で追加します。空フォルダはGitには保存されません。
+[AI駆動開発の進め方](steering/aidd/README.md)、[APIの技術方針](steering/api/README.md)、[仕様・設計の成果物とテンプレート](specs/README.md)を整備しています。タスク管理の仕様は `specs/tasks/`、実装は `apps/backend/app/tasks/` にあります。空フォルダはGitには保存されません。

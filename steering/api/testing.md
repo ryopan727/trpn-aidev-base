@@ -1,14 +1,14 @@
 # テスト
 
-状態：決定済み（2026-11-08）
+状態：決定済み（2026-11-16更新：E2EをCompose上のAPIへの実HTTP通信に変更）
 
-pytestとFastAPIのTestClientを基本とし、SQLの検証にはテスト専用PostgreSQLを使う。今回は方針のみを定め、テストコードやComposeの実行設定はまだ作成しない。
+pytestを使い、DB不要のHTTP境界テストではFastAPIのTestClient、E2EではDocker Composeで起動したAPIに対するHTTPXの実HTTP通信を使う。SQL・保存の検証にはテスト専用PostgreSQLを使う。具体的なTaskと検証対象は各サブドメインの設計に記載する。
 
 ## ツールと配置
 
-- `pytest` と、TestClientが利用する `httpx` をuvの開発用依存に追加する。版は導入時に互換性を確認して固定する。
+- `pytest` と、TestClient・実HTTP通信が利用する `httpx` をuvの開発用依存に追加する。版は導入時に互換性を確認して固定する。
 - テストは通常の `def` と `assert` で記述し、準備・後片付けはpytestのfixtureで共通化する。
-- 配置は `apps/backend/tests/<サブドメイン>/<層>/` を基本とする。共通処理は `tests/shared/`、組み立ては `tests/bootstrap/`、横断する連携テストは `tests/integration/` に置く。
+- 配置は `apps/backend/tests/<サブドメイン>/<層>/` を基本とする。共通処理は `tests/shared/`、組み立ては `tests/bootstrap/`、横断する連携テストは `tests/integration/`、実HTTP通信によるE2Eは `tests/e2e/` に置く。
 - ファイル名・関数名は `test_` で始める。共通fixtureは必要な範囲の `conftest.py` に置く。
 
 参照：[FastAPIのテスト](https://fastapi.tiangolo.com/tutorial/testing/)、[pytestのfixture](https://docs.pytest.org/en/stable/explanation/fixtures.html)。
@@ -21,9 +21,10 @@ pytestとFastAPIのTestClientを基本とし、SQLの検証にはテスト専用
 | application | ユースケースの結果、処理条件、失敗時の動作。 | Repositoryなどの契約を満たす簡単な代替実装を使う。 |
 | presentation | HTTPステータス、JSON、入力検証、例外の変換。 | 原則として依存を置き換える。 |
 | infrastructure | SQL、検索条件、保存結果、DB制約、行からドメインへの変換。 | テスト専用PostgreSQLを使う。 |
-| integration | APIからDBまでの主要な処理のつながり。 | テスト専用PostgreSQLを使う。 |
+| integration | プロセス内の複数部品・サブドメインの連携。HTTP境界を含める場合はTestClientを使う。 | 必要に応じてテスト専用PostgreSQLを使う。 |
+| e2e | HTTPクライアントから実ネットワークを通じて、Compose上のUvicorn・API・DB・HTTP応答までを検証する。 | テスト専用PostgreSQLを使う。 |
 
-例えば注文作成では、domainで不正な数量、presentationで入力不備の400、infrastructureで保存・取得、integrationでPOSTの201とGETによる取得を検証する。
+例えば注文作成では、domainで不正な数量、presentationで入力不備の400、infrastructureで保存・取得、E2Eで実HTTPによるPOSTの201とGETによる取得を検証する。
 正常系だけでなく、必要な境界値、対象なし、競合、想定外エラーも確認する。すべてのケースを全層で重複して検証せず、各層の責務に合わせる。
 既に決定した契約の確認として、未知のクエリが400になること、JSON構文エラーと通常の入力検証エラーのコード、OpenAPIに既定の422が残らないこと、PATCHの省略とnullの違いも対象にする。
 DB連携では複数更新の途中失敗で全体が取り消されることを確認する。共通処理では500を含む応答とログのリクエストIDの一致、秘密情報の非出力、障害ログの重複抑止を確認する。
@@ -32,11 +33,12 @@ DB連携では複数更新の途中失敗で全体が取り消されることを
 ## 外部処理と設定の置き換え
 
 - 外部サービスへは通常のテストから接続せず、簡単な代替実装を基本に、必要な箇所でモックを使う。
-- applicationではコンストラクターから依存を渡し、APIテストでは `app.dependency_overrides` を使う。差し替えはfixtureの後片付けで戻す。
+- applicationではコンストラクターから依存を渡し、プロセス内のAPIテストでは `app.dependency_overrides` を使う。差し替えはfixtureの後片付けで戻す。
 - 環境変数はpytestの `monkeypatch` で差し替え、必須設定の不足や型違反も検証する。
 - DB不要のテストでDBプールを起動しないよう、アプリ生成・起動時の資源の組み立てもテスト用に差し替えられるようにする。依存関数の上書きだけで起動時のDB接続も止まるとは扱わない。
-- 起動・終了処理を含むAPIテストではTestClientをコンテキストマネージャーで使う。
-- 500の応答本文・ヘッダーを検証するテストでは `raise_server_exceptions=False` を指定する。通常のテストでは既定の例外再送出を維持し、実装の不具合を見つけやすくする。
+- プロセス内で起動・終了処理を含むAPIテストではTestClientをコンテキストマネージャーで使う。
+- E2EはHTTPXの通常のHTTPクライアントを使う。アプリの直接呼び出し、ASGITransport、業務処理・DBの差し替えは行わない。接続不能や起動失敗をスキップ・成功扱いにしない。
+- TestClientで500の応答本文・ヘッダーを検証する場合は `raise_server_exceptions=False` を指定する。通常のテストでは既定の例外再送出を維持し、実装の不具合を見つけやすくする。
 
 参照：[FastAPIの依存の上書き](https://fastapi.tiangolo.com/advanced/testing-dependencies/)、[環境変数の差し替え](https://docs.pytest.org/en/stable/how-to/monkeypatch.html)、[TestClientの500応答・lifespanの扱い](https://starlette.dev/testclient/)。TestClientとHTTPXの対応は、初回実装で解決するFastAPI・Starletteの版に合わせて確認する。
 
@@ -62,12 +64,20 @@ DBを使うテストにはpytestの `db` マーカーを登録・付与し、DB�
 docker compose run --rm --build --no-deps test uv run --locked pytest -m "not db"
 ```
 
-DBテストは次の順に実行し、各段階の成功を確認してから次へ進む。
+DB結合テストは次の順に実行し（tasksの例）、各段階の成功を確認してから次へ進む。
 
 ```bash
 docker compose up -d --wait db-test
 docker compose run --rm flyway-test migrate
-docker compose run --rm --build --no-deps test uv run --locked pytest -m db
+docker compose run --rm --build --no-deps test uv run --locked pytest -m db tests/tasks/infrastructure
 ```
 
-実行時は開発用と同じマイグレーションファイルを使い、接続先だけをテスト専用へ切り替える。具体的なComposeサービス設定は実装時に用意する。
+実行時は開発用と同じマイグレーションファイルを使い、接続先だけをテスト専用へ切り替える。具体的なComposeサービス設定はルートの `compose.yaml` を参照する。
+
+## E2Eの実行境界
+
+E2Eでは、テスト専用DBの準備とFlyway適用後に `api-test` をビルドして起動する。開発用と同じDockerfileのruntimeターゲット・起動コマンドを使用し、接続先を `db-test` にする。DBへアクセスするAPIのhealthcheck成功を待ってから、別の `test` コンテナのHTTPXで `http://api-test:8000` に通信する。APIはホストへ公開せず、開発用api・dbをテスト対象にしない。
+
+Taskが準備→起動待機→pytest→API停止を管理する。準備・テスト失敗時もapi-testの停止を試み、失敗を非ゼロ終了で報告する。結合・E2Eは同じテストDBに対して直列に実行する。通常の停止・再起動後の永続化や画面は、別途定める受入条件に従って検証する。
+
+E2Eは `task test:e2e` で実行する。`pytest -m db` だけで全DBテストを選ぶとE2Eも含むため、結合テストの直接実行では対象ディレクトリを指定する。
