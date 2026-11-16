@@ -1,8 +1,8 @@
 # Docker Compose・起動方法
 
-状態：決定済み（2026-11-08）
+状態：決定済み（2026-11-16更新：E2E用api-testを追加）
 
-ローカル開発ではAPI・PostgreSQL・FlywayをDocker Composeで管理する。本番用の起動構成は別途扱う。今回は方針のみを定め、DockerfileやComposeファイルはまだ作成しない。
+ローカル開発ではAPI・PostgreSQL・FlywayをDocker Composeで管理する。本番用の起動構成は別途扱う。具体的なサービス定義はルートの `compose.yaml`、起動・テストの手順は `Taskfile.yml` に記載する。
 
 ## ファイルとサービスの配置
 
@@ -27,9 +27,10 @@
 | `flyway` | SQLマイグレーションを明示的に実行する。処理終了後に終了し、常駐しない。 |
 | `db-test` | テスト専用PostgreSQL。開発用と認証情報・保存領域を分離する。 |
 | `flyway-test` | 同じSQLマイグレーションをテスト専用DBへ適用する。 |
-| `test` | 開発用依存とテストコードを使ってpytestを実行する。APIサーバーは起動しない。 |
+| `api-test` | E2E専用のAPIサーバー。開発用と同じruntimeイメージ構成・起動コマンドで動かし、db-testへ接続する。ホストへは公開しない。 |
+| `test` | 開発用依存とテストコードを使ってpytestを実行する。E2Eでは別コンテナのapi-testにHTTP通信する。 |
 
-通常の開発で常駐するのは `api` と `db` です。Flywayとテスト関連サービスはprofilesで通常起動から外し、対象サービスを明示して実行します。`test` から開発用 `api`・`db` への依存は設けません。DB不要のテストは `--no-deps` で実行し、テスト専用DBも起動しません。
+通常の開発で常駐するのは `api` と `db` です。E2E時だけ `api-test` を明示的に起動し、DBを使うAPIのhealthcheckを待ち、テスト後は成功・失敗にかかわらず停止します。Flywayとテスト関連サービスはprofilesで通常起動から外し、対象サービスを明示して実行します。`test` から開発用 `api`・`db` への依存は設けません。DB不要のテストは `--no-deps` で実行し、テスト専用DBも起動しません。
 
 Composeファイルと `.env` はリポジトリ直下に置き、コマンドも同じ場所から実行する。APIのビルド対象は `apps/backend/` とする。
 `.env` の値はComposeの `environment` でサービスごとに必要な変数へ対応付ける。PythonではNo.11どおり `os.getenv()` で取得する。FlywayにはFlyway用の接続設定を渡す。

@@ -17,7 +17,7 @@
 | 環境 | 構成・確認事項 |
 | --- | --- |
 | ローカル開発 | api・db・flywayを利用。`.env`からComposeが必要な変数だけを渡し、Pythonは`os.getenv()`で取得する。API公開はローカルに限定する。 |
-| テスト | test・db-test・flyway-testを利用。開発DBとは接続先・認証情報・保存領域を分離し、開発DBへのフォールバックを禁止する。 |
+| テスト | test・db-test・flyway-testを利用し、E2Eではapi-testも起動する。api-testは開発APIと同じDockerfileのruntimeターゲットと起動コマンドを使い、ビルドしたコードで起動する。接続先はdb-testのみとし、ホスト向けポートは公開しない。開発DBとは接続先・認証情報・保存領域を分離し、開発用へのフォールバックを禁止する。 |
 | Git worktree | [作業分離の方針](../../../steering/aidd/modes.md)に従い、Composeのプロジェクト・公開ポート・ボリュームを他の作業と分離する。 |
 | 本番 | 今回の対象外。公開運用の構成は決めない。 |
 

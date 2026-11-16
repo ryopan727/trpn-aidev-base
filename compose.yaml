@@ -59,6 +59,28 @@ services:
         condition: service_healthy
     logging: *logging
 
+  api-test:
+    build:
+      context: ./apps/backend
+      target: runtime
+    profiles: [test]
+    environment:
+      DB_HOST: db-test
+      DB_PORT: "5432"
+      DB_NAME: ${TEST_DB_NAME:?Set TEST_DB_NAME in .env}
+      DB_USER: ${TEST_DB_USER:?Set TEST_DB_USER in .env}
+      DB_PASSWORD: ${TEST_DB_PASSWORD:?Set TEST_DB_PASSWORD in .env}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      db-test:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, /app/.venv/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/tasks')"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
   db-test:
     image: postgres:18.7
     profiles: [test]

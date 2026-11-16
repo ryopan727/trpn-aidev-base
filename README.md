@@ -36,7 +36,7 @@ task openapi:export
 task dev:down
 ```
 
-停止してもDBのデータは保持します。結合・E2Eテストは専用DBを初期化するため、同時実行しません。worktreeを併用する場合は、それぞれの `.env` で `COMPOSE_PROJECT_NAME` と `API_PORT` を分けます。`TEST_DB_NAME` は `_test` で終わる名前にします。認証・認可は対象外で、ローカルで試すAPIです。
+停止してもDBのデータは保持します。結合・E2Eテストは専用DBを初期化するため、同時実行しません。`task test:e2e` は専用のAPIコンテナを起動し、実HTTP通信からDB保存まで検証した後、専用APIを停止します。worktreeを併用する場合は、それぞれの `.env` で `COMPOSE_PROJECT_NAME` と `API_PORT` を分けます。`TEST_DB_NAME` は `_test` で終わる名前にします。認証・認可は対象外で、ローカルで試すAPIです。
 [タスク管理の仕様](specs/tasks/requirements.md)と[Taskの詳細](specs/tasks/detailed-design/operations.md)を参照してください。
 
 ## 2つのモードの使い方

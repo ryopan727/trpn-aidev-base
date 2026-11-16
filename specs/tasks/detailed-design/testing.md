@@ -10,8 +10,8 @@
 | --- | --- |
 | 単体 | domainのタイトル・状態ルール、applicationの保存確定／取り消し、DBを差し替えたpresentationの入力検証・エラー応答。 |
 | 結合 | 実PostgreSQLに対するRepository・Unit of Work・Flyway。保存結果、順序、ページ分割、rollback、並行完了を確認。 |
-| E2E | TestClientを入口とし、実際のbootstrap・4層・テスト用PostgreSQLを通す。登録→取得→一覧→完了→再取得を確認する。画面は対象外。 |
-| 起動・永続化確認 | ローカルComposeの通常停止・再起動を通して保存結果を確認。TestClientだけでは検証できないコンテナ構成を補う。 |
+| E2E | testコンテナのHTTPXからCompose上のapi-testへ実HTTP通信し、Uvicorn・FastAPI・bootstrap・4層・db-testを通してHTTP応答まで確認する。登録→取得→一覧→完了→再取得に加え、別接続からDBの保存結果も確認する。画面は対象外。 |
+| 起動・永続化確認 | 通常の停止・再起動後の保存結果は、TASK-AC-009として別途確認する。E2EのAPI起動確認に加えて、永続ボリュームの保持を検証する。 |
 
 ## 2. 重要な検証観点
 
@@ -32,9 +32,9 @@
 
 ## 3. テストデータ・依存先の扱い
 
-DBを使うテストに `db` マーカーを付ける。結合は `tests/tasks/infrastructure/`、E2Eは `tests/integration/` をTaskで選択する。DB不要テストではRepository等を差し替える。DBありテストは開発DBと分離し、Flyway履歴を保って各テストのデータを片付ける。SQLiteへの置換や実データ・秘密値の使用はしない。
+DBを使うテストに `db` マーカーを付ける。結合は `tests/tasks/infrastructure/`、E2Eは `tests/e2e/` をTaskで選択する。DB不要テストではRepository等を差し替える。DBありテストは開発DBと分離し、Flyway履歴を保って各テストのデータを片付ける。SQLiteへの置換や実データ・秘密値の使用はしない。
 
-順序の検証では作成時点・IDが制御されたデータを用意する。TestClientはlifespanを実行し、500応答の確認ではテスト側への例外再送出を無効にする。永続化の受入確認には専用のローカルComposeプロジェクトを用い、通常の開発データを変更しない。
+順序の検証では作成時点・IDが制御されたデータを用意する。単体のHTTP境界テストではTestClientのlifespanを実行し、500応答の確認では例外再送出を無効にする。E2Eは `httpx.Client` を使い、接続先を `http://api-test:8000` に固定する。アプリの直接呼び出し・ASGITransport・依存の差し替えは行わず、接続不能やタイムアウトは失敗とする。DB用fixtureはテストデータの初期化・後片付けと保存結果の確認だけを担当する。永続化の受入確認には専用のローカルComposeプロジェクトを用い、通常の開発データを変更しない。
 
 ## 4. 未決定事項
 

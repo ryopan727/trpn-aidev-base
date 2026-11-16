@@ -3,10 +3,7 @@ from contextlib import asynccontextmanager
 from copy import deepcopy
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app.bootstrap.tasks import get_uow
-from app.main import create_app
 from app.shared.infrastructure.database import create_pool
 from app.shared.infrastructure.settings import Settings
 
@@ -66,6 +63,11 @@ async def no_database(app):
 
 @pytest.fixture
 def api(memory_uow):
+    from fastapi.testclient import TestClient
+
+    from app.bootstrap.tasks import get_uow
+    from app.main import create_app
+
     app = create_app(no_database)
     app.dependency_overrides[get_uow] = lambda: memory_uow
     with TestClient(app, raise_server_exceptions=False) as client:
@@ -95,10 +97,3 @@ def db_pool():
         with pool.connection() as conn:
             conn.execute("TRUNCATE tasks")
         pool.close()
-
-
-@pytest.fixture
-def db_api(db_pool):
-    # Use the real lifespan/bootstrap pool; db_pool only prepares isolated data.
-    with TestClient(create_app()) as client:
-        yield client

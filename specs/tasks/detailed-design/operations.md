@@ -14,9 +14,9 @@
 | --- | --- | --- | --- |
 | 単体 | `task test:unit` | domain・applicationとHTTP境界のDB不要テスト。testコンテナで実行。 | `Taskfile.yml` |
 | 結合 | `task test:integration` | 実PostgreSQLとのRepository・Unit of Workの確認。db-test起動・Flyway適用後に実行。 | `Taskfile.yml` |
-| E2E | `task test:e2e` | TestClientによるHTTP境界→実DBの一連の操作。db-test起動・Flyway適用後に実行。 | `Taskfile.yml` |
+| E2E | `task test:e2e` | db-test起動→Flyway適用→api-testのビルド・起動・healthcheck待機→実HTTPテスト。終了時は成功・失敗にかかわらずapi-testを停止する。 | `Taskfile.yml` |
 
-結合・E2Eはテスト用DBだけを初期化する。通常の停止・再起動による永続化は、下表の開発用TaskとAPI呼び出しによる受入確認で補う。結合は `tests/tasks/infrastructure/`、E2Eは `tests/integration/` を直列に実行し、同じテストDBに対して同時実行しない。
+結合・E2Eはテスト用DBだけを初期化する。通常の停止・再起動による永続化は、下表の開発用TaskとAPI呼び出しによる受入確認で補う。結合は `tests/tasks/infrastructure/`、E2Eは `tests/e2e/` を直列に実行し、同じテストDBに対して同時実行しない。E2E開始時にもapi-testを停止し、稼働中のAPIへマイグレーションを適用しない。起動・マイグレーション・テストの失敗は非ゼロ終了として返す。api-testのホスト向けポートは公開せず、Compose内部の通信を使う。開発用api・dbは操作しない。
 
 ## 3. 静的解析・その他のTask一覧
 

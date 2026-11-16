@@ -28,10 +28,13 @@ tasks:
       - task: test:prepare
       - docker compose run --rm --build --no-deps test uv run --locked pytest -m db tests/tasks/infrastructure
   test:e2e:
-    desc: Test HTTP requests through all layers against PostgreSQL
+    desc: Test the Compose API over real HTTP against PostgreSQL
     cmds:
+      - defer: docker compose stop api-test
+      - docker compose stop api-test
       - task: test:prepare
-      - docker compose run --rm --build --no-deps test uv run --locked pytest -m db tests/integration
+      - docker compose up -d --build --wait api-test
+      - docker compose run --rm --build --no-deps test uv run --locked pytest -m db tests/e2e
   lint:
     desc: Check Python with Ruff
     cmds:
