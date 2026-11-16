@@ -1,0 +1,307 @@
+# 文書の状態: 決定済み
+# API契約の正。FastAPI生成結果で上書きしない。
+openapi: 3.1.0
+info:
+  title: タスク管理API
+  version: 0.1.0
+  description: 登録・一覧・完了と補助の1件取得。2026-11-16承認済み。入力不備は400。認証・認可は今回の対象外。
+tags:
+- name: tasks
+  description: タスク管理
+security: []
+paths:
+  /api/v1/tasks:
+    post:
+      tags:
+      - tasks
+      summary: タスク登録
+      operationId: createTask
+      description: TASK-FUNC-001 / TASK-REQ-001。未完了で登録する。同名の登録を許可する。クエリは受け付けない。
+      responses:
+        '201':
+          description: 成功
+          headers:
+            X-Request-ID:
+              description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+              schema:
+                type: string
+                format: uuid
+            Location:
+              description: 登録したタスクの取得URL（/api/v1/tasks/{id}）。
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+    get:
+      tags:
+      - tasks
+      summary: タスク一覧
+      operationId: listTasks
+      description: TASK-FUNC-002 / TASK-REQ-002。全状態をcreated_at降順、id降順で返す。pageとpage_size以外のクエリは400。0件・範囲外ページも200。並行登録をまたぐページ間の同一スナップショットは保証しない。
+      responses:
+        '200':
+          description: 成功
+          headers:
+            X-Request-ID:
+              description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  /api/v1/tasks/{task_id}:
+    parameters:
+    - name: task_id
+      in: path
+      required: true
+      description: UUID形式不正は400、形式が正しく対象がなければ404。
+      schema:
+        type: string
+        format: uuid
+    get:
+      tags:
+      - tasks
+      summary: タスク1件取得
+      operationId: getTask
+      description: TASK-FUNC-004 / TASK-REQ-004。登録時のLocationで参照する補助API。クエリは受け付けない。
+      responses:
+        '200':
+          description: 成功
+          headers:
+            X-Request-ID:
+              description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+      - tasks
+      summary: タスク完了
+      operationId: completeTask
+      description: TASK-FUNC-003 / TASK-REQ-003。完了済みの再操作も200。空オブジェクトは現状を返す。タイトル・ID・作成日時は変更しない。クエリは受け付けない。
+      responses:
+        '200':
+          description: 成功
+          headers:
+            X-Request-ID:
+              description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskComplete'
+components:
+  schemas:
+    TaskStatus:
+      type: string
+      enum:
+      - pending
+      - completed
+      description: 'pending: 未完了、completed: 完了'
+    TaskTitle:
+      type: string
+      minLength: 1
+      maxLength: 100
+      pattern: \S
+      description: Unicodeコードポイント数で1〜100文字。空白のみは禁止。自動trimしない。
+    TaskCreate:
+      type: object
+      properties:
+        title:
+          $ref: '#/components/schemas/TaskTitle'
+      required:
+      - title
+      additionalProperties: false
+    TaskComplete:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - completed
+      additionalProperties: false
+      description: status省略時は変更しない。空オブジェクトは成功。nullは禁止。
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: APIが生成するUUIDv4
+        title:
+          $ref: '#/components/schemas/TaskTitle'
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        created_at:
+          type: string
+          format: date-time
+          description: APIが設定する作成時点。UTCのZ表記で返す。
+      required:
+      - id
+      - title
+      - status
+      - created_at
+    TaskList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+      required:
+      - items
+      - page
+      - page_size
+      - total
+    ErrorDetail:
+      type: object
+      properties:
+        location:
+          type: array
+          items:
+            oneOf:
+            - type: string
+            - type: integer
+        code:
+          type: string
+          enum:
+          - REQUIRED
+          - INVALID_TYPE
+          - INVALID_VALUE
+          - UNKNOWN_FIELD
+        message:
+          type: string
+          description: 入力値を含まない公開用の説明
+      required:
+      - location
+      - code
+      - message
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: 公開エラーコード。各応答の説明を参照。
+            message:
+              type: string
+              description: 内部情報を含まない短い日本語メッセージ
+            details:
+              type: array
+              items:
+                $ref: '#/components/schemas/ErrorDetail'
+              description: 項目別の情報がない場合も空配列を返す。
+          required:
+          - code
+          - message
+          - details
+      required:
+      - error
+  responses:
+    BadRequest:
+      description: 入力不備。JSON構文不備はINVALID_JSON、それ以外の入力検証違反はVALIDATION_ERROR。domainでタイトル違反を検知した場合はINVALID_TASK_TITLE。
+      headers:
+        X-Request-ID:
+          description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+          schema:
+            type: string
+            format: uuid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: 'TASK_NOT_FOUND: 指定したタスクが存在しない。'
+      headers:
+        X-Request-ID:
+          description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+          schema:
+            type: string
+            format: uuid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: 'INTERNAL_ERROR: 想定外の内部障害。内部情報を含めない。'
+      headers:
+        X-Request-ID:
+          description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+          schema:
+            type: string
+            format: uuid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
