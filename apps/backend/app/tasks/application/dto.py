@@ -23,3 +23,16 @@ class TaskPageDTO:
     page: int
     page_size: int
     total: int
+
+
+@dataclass(frozen=True)
+class TaskTagDTO:
+    name: str
+
+
+@dataclass(frozen=True)
+class TaskTagListDTO:
+    items: list[TaskTagDTO]
+    page: int
+    page_size: int
+    total: int

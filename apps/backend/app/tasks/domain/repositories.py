@@ -1,6 +1,7 @@
 from typing import Protocol
 from uuid import UUID
 
+from app.tasks.domain.tag import TaskTag
 from app.tasks.domain.task import Task
 
 
@@ -9,3 +10,11 @@ class TaskRepository(Protocol):
     def get(self, task_id: UUID, *, for_update: bool = False) -> Task | None: ...
     def list(self, page: int, page_size: int) -> tuple[list[Task], int]: ...
     def save(self, task: Task) -> None: ...
+
+
+class TaskTagRepository(Protocol):
+    def attach(self, task_id: UUID, tag: "TaskTag") -> bool: ...
+    def detach(self, task_id: UUID, name: str) -> bool: ...
+    def list(
+        self, task_id: UUID, page: int, page_size: int
+    ) -> tuple[list["TaskTag"], int] | None: ...

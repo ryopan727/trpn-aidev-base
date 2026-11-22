@@ -11,7 +11,7 @@ Python・FastAPIでREST APIを作り、Docker Composeで開発環境を起動す
 4. AIが作成した要求・設計を確認して承認し、「自律実装モード」で実装を依頼します。
 5. 作成されたPR（変更内容をレビューするための提案）で、コード・仕様との対応・テスト結果を確認します。
 
-方針・設計テンプレートに加え、タスク管理API（登録・一覧・完了・1件取得）を実装しています。Git・Docker Compose・[Go Task](https://taskfile.dev/)を用意してください。自律実装でPRを作成する場合は、作業先リポジトリへのpush・PR作成に必要なGitHubの認証・権限も必要です。
+方針・設計テンプレートに加え、タスク管理API（登録・一覧・完了・1件取得・タグ付与／解除／一覧）を実装しています。Git・Docker Compose・[Go Task](https://taskfile.dev/)を用意してください。自律実装でPRを作成する場合は、作業先リポジトリへのpush・PR作成に必要なGitHubの認証・権限も必要です。
 
 ### サンプルAPIを起動する
 
@@ -24,6 +24,8 @@ task dev:up
 ```
 
 起動後は [Swagger UI](http://127.0.0.1:8000/docs) で登録・一覧・完了を試せます。登録は `{"title": "最初のタスク"}`、完了は対象IDへのPATCHで `{"status": "completed"}` を指定します。
+
+タグはPUT /api/v1/tasks/{task_id}/tags/{tag_name}で付与、同じURLへのDELETEで解除します。本文は不要です。GET /api/v1/tasks/{task_id}/tagsで一覧を取得します。Swagger UIではパスにタグ名（例：仕事）を入力できます。既存DBへの追加テーブルは、task dev:upのFlyway適用で作成されます。
 
 ```bash
 task test:unit

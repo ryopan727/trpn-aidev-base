@@ -14,10 +14,16 @@ from app.shared.infrastructure.logging import configure_logging
 from app.shared.infrastructure.settings import Settings
 from app.shared.presentation.access import AccessMiddleware
 from app.shared.presentation.errors import http_error, internal_error, validation_error
-from app.tasks.application.exceptions import TaskNotFound
-from app.tasks.domain.exceptions import InvalidTaskTitle
-from app.tasks.presentation.error_handlers import invalid_title, task_not_found
+from app.tasks.application.exceptions import TaskNotFound, TaskTagNotFound
+from app.tasks.domain.exceptions import InvalidTaskTagName, InvalidTaskTitle
+from app.tasks.presentation.error_handlers import (
+    invalid_tag_name,
+    invalid_title,
+    tag_not_found,
+    task_not_found,
+)
 from app.tasks.presentation.router import router
+from app.tasks.presentation.tag_router import router as tag_router
 
 
 @asynccontextmanager
@@ -45,12 +51,15 @@ def create_app(
         redirect_slashes=False,
     )
     app.include_router(router)
+    app.include_router(tag_router)
     app.add_middleware(AccessMiddleware)
     app.add_exception_handler(RequestValidationError, validation_error)
     app.add_exception_handler(HTTPException, http_error)
     app.add_exception_handler(Exception, internal_error)
     app.add_exception_handler(TaskNotFound, task_not_found)
     app.add_exception_handler(InvalidTaskTitle, invalid_title)
+    app.add_exception_handler(InvalidTaskTagName, invalid_tag_name)
+    app.add_exception_handler(TaskTagNotFound, tag_not_found)
 
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:

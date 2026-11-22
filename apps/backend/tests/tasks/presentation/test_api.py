@@ -170,7 +170,15 @@ def test_generated_openapi_important_contracts(api):
             assert {"400", "500"} <= operation["responses"].keys()
             for response in operation["responses"].values():
                 assert "X-Request-ID" in response["headers"]
-    assert ids == {"createTask", "listTasks", "getTask", "completeTask"}
+    assert ids == {
+        "createTask",
+        "listTasks",
+        "getTask",
+        "completeTask",
+        "attachTaskTag",
+        "detachTaskTag",
+        "listTaskTags",
+    }
     schemas = spec["components"]["schemas"]
     assert schemas["TaskCreate"]["required"] == ["title"]
     assert schemas["TaskCreate"]["additionalProperties"] is False
