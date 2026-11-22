@@ -5,12 +5,14 @@ from psycopg import Connection
 from psycopg.pq import TransactionStatus
 
 from app.tasks.infrastructure.repositories import PostgresTaskRepository
+from app.tasks.infrastructure.tag_repositories import PostgresTaskTagRepository
 
 
 class PostgresUnitOfWork:
     def __init__(self, conn: Connection[dict[str, Any]]):
         self.conn = conn
         self.tasks = PostgresTaskRepository(conn)
+        self.tags = PostgresTaskTagRepository(conn)
 
     def __enter__(self) -> Self:
         if self.conn.info.transaction_status != TransactionStatus.IDLE:

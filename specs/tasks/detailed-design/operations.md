@@ -2,6 +2,8 @@
 
 文書の状態：決定済み
 
+> 2026-11-22：タグ名の直接指定による付与・解除・一覧取得と、その制約・API・データモデルをユーザー承認済み（TASK-Q-004）。
+
 ## 1. 共通手順・Taskの実行前提
 
 以下はリポジトリ直下の [Taskfile.yml](../../../Taskfile.yml) に定義したコマンド。ルートからGo TaskとDocker Composeを使って実行する。利用前に `.env.example` から開発専用の `.env` を用意する。実行の内部手順はTask定義に集約し、[Compose](../../../steering/api/docker-compose.md)・[テスト共通方針](../../../steering/api/testing.md)に合わせる。
@@ -29,8 +31,11 @@
 | ビルド・起動 | `task dev:up` | APIイメージのビルド、DB待機、Flyway適用、API起動の順。途中失敗は起動成功にしない。 | `Taskfile.yml` |
 | 停止 | `task dev:down` | 開発用Composeを停止する。保存ボリュームは削除しない。 | `Taskfile.yml` |
 
-OpenAPIの出力成功だけで整合確認完了とはしない。[照合方針](../../README.md)に従い、4操作と参照スキーマ・応答ヘッダー・400応答などを手書き仕様と照合し、PRに結果を記録する。
+OpenAPIの出力成功だけで整合確認完了とはしない。[照合方針](../../README.md)に従い、既存4操作とタグ追加3操作、および参照スキーマ・応答ヘッダー・400応答などを手書き仕様と照合し、PRに結果を記録する。
+
+タグ追加の実装・テストも既存Taskを利用する。新規3操作の生成OpenAPI照合と各段階のテスト結果はPRに記録する。
 
 ## 4. 未決定事項
 
 [要求仕様](../requirements.md)のTASK-Q-001〜003は2026-11-16にユーザー承認済み。比較用の生成結果は `artifacts/openapi.generated.json`（Git管理外）に出力する。
+\nタグ追加部分は[要求仕様](../requirements.md)のTASK-Q-004で承認済み。\n

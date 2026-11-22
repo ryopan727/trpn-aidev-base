@@ -1,10 +1,11 @@
 # 文書の状態: 決定済み
+# 既存4操作とタグ追加3操作は承認済み（タグ：2026-11-22、TASK-Q-004）。
 # API契約の正。FastAPI生成結果で上書きしない。
 openapi: 3.1.0
 info:
   title: タスク管理API
   version: 0.1.0
-  description: 登録・一覧・完了と補助の1件取得。2026-11-16承認済み。入力不備は400。認証・認可は今回の対象外。
+  description: 登録・一覧・完了と補助の1件取得。既存機能は2026-11-16承認済み。タグ付与・解除・一覧取得は2026-11-22承認済み。入力不備は400。認証・認可は今回の対象外。
 tags:
 - name: tasks
   description: タスク管理
@@ -149,8 +150,168 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/TaskComplete'
+  /api/v1/tasks/{task_id}/tags:
+    parameters:
+    - name: task_id
+      in: path
+      required: true
+      description: UUID形式不正は400、形式が正しく対象がなければ404。
+      schema:
+        type: string
+        format: uuid
+    get:
+      tags:
+      - tasks
+      summary: タスクのタグ一覧
+      operationId: listTaskTags
+      description: TASK-FUNC-007 / TASK-REQ-007。タグ名のコードポイント昇順。page・page_size以外のクエリと本文は400。対象タスクなしは404。タグ0件・範囲外ページは200の空一覧。
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: 成功
+          headers:
+            X-Request-ID:
+              description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTagList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/TagNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/tasks/{task_id}/tags/{tag_name}:
+    parameters:
+    - name: task_id
+      in: path
+      required: true
+      description: UUID形式不正は400、形式が正しく対象がなければ404。
+      schema:
+        type: string
+        format: uuid
+    - name: tag_name
+      in: path
+      required: true
+      description: タグ名をURLの1区間としてエンコードして指定。デコード後の文字列で検証する。
+      schema:
+        $ref: '#/components/schemas/TaskTagName'
+    put:
+      tags:
+      - tasks
+      summary: 名前を指定してタグを付与
+      operationId: attachTaskTag
+      description: TASK-FUNC-005 / TASK-REQ-005。本文・クエリは400で拒否。新規201、同名再付与200。名前の付与状態を作成・再指定し、タスク本体を変更しない。ルーティングできないパスは404になり得る。
+      responses:
+        '201':
+          description: 指定名のタグを新規付与
+          headers:
+            X-Request-ID:
+              description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTag'
+        '200':
+          description: 成功（再付与は変更なし）
+          headers:
+            X-Request-ID:
+              description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTag'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/TagNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+      - tasks
+      summary: 名前を指定してタグを解除
+      operationId: detachTaskTag
+      description: TASK-FUNC-006 / TASK-REQ-006。本文・クエリは400で拒否。未付与の解除は404。ルーティングできないパスは404になり得る。
+      responses:
+        '204':
+          description: 解除成功。本文なし。
+          headers:
+            X-Request-ID:
+              description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+              schema:
+                type: string
+                format: uuid
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/TagNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   schemas:
+    TaskTagName:
+      type: string
+      minLength: 1
+      maxLength: 30
+      not:
+        pattern: '[\s/\\\x00-\x1F\x7F]'
+      description: Unicodeコードポイント数で1〜30文字。空白・制御文字(U+0000〜001F、007F)・スラッシュ・バックスラッシュ禁止。trim・大小文字変換・Unicode正規化なし。
+    TaskTag:
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/TaskTagName'
+      required:
+      - name
+      additionalProperties: false
+    TaskTagList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskTag'
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+      required:
+      - items
+      - page
+      - page_size
+      - total
     TaskStatus:
       type: string
       enum:
@@ -269,8 +430,20 @@ components:
       required:
       - error
   responses:
+    TagNotFound:
+      description: 'TASK_NOT_FOUND: タスクなし。TASK_TAG_NOT_FOUND: 解除対象のタグが未付与。ルーティング不一致は共通HTTP_ERROR。'
+      headers:
+        X-Request-ID:
+          description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。
+          schema:
+            type: string
+            format: uuid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     BadRequest:
-      description: 入力不備。JSON構文不備はINVALID_JSON、それ以外の入力検証違反はVALIDATION_ERROR。domainでタイトル違反を検知した場合はINVALID_TASK_TITLE。
+      description: 入力不備。JSON本文を扱う既存APIのJSON構文不備はINVALID_JSON、それ以外の入力検証違反はVALIDATION_ERROR。タグ追加3操作では本文指定自体をVALIDATION_ERRORとして拒否する。domainでタイトル違反はINVALID_TASK_TITLE、タグ名違反はINVALID_TASK_TAG_NAME。
       headers:
         X-Request-ID:
           description: サーバーで生成したリクエスト識別子。エラー応答にも付与する。

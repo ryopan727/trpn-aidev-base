@@ -28,15 +28,41 @@ class MemoryRepository:
         self.items[task.id] = task
 
 
+class MemoryTagRepository:
+    def __init__(self, tasks):
+        self.tasks = tasks
+        self.items = {}
+
+    def attach(self, task_id, tag):
+        key = (task_id, tag.name)
+        created = key not in self.items
+        self.items[key] = tag
+        return created
+
+    def detach(self, task_id, name):
+        return self.items.pop((task_id, name), None) is not None
+
+    def list(self, task_id, page, page_size):
+        if self.tasks.get(task_id) is None:
+            return None
+        tags = sorted(
+            (tag for (tid, _), tag in self.items.items() if tid == task_id),
+            key=lambda tag: tag.name,
+        )
+        return tags[(page - 1) * page_size : page * page_size], len(tags)
+
+
 class MemoryUow:
     def __init__(self):
         self.tasks = MemoryRepository()
+        self.tags = MemoryTagRepository(self.tasks)
         self.committed = False
         self.fail_commit = False
         self.exited = False
 
     def __enter__(self):
         self.before = deepcopy(self.tasks.items)
+        self.tags_before = deepcopy(self.tags.items)
         self.committed = False
         return self
 
@@ -48,6 +74,7 @@ class MemoryUow:
     def __exit__(self, *args):
         if not self.committed:
             self.tasks.items = self.before
+            self.tags.items = self.tags_before
         self.exited = True
 
 
@@ -91,9 +118,9 @@ def db_pool():
     pool.open(wait=True)
     try:
         with pool.connection() as conn:
-            conn.execute("TRUNCATE tasks")
+            conn.execute("TRUNCATE task_tags, tasks")
         yield pool
     finally:
         with pool.connection() as conn:
-            conn.execute("TRUNCATE tasks")
+            conn.execute("TRUNCATE task_tags, tasks")
         pool.close()
